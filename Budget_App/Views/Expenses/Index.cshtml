@@ -1,0 +1,55 @@
+﻿@model IEnumerable<Budget_App.Models.Expense>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<div class="row">
+    <div class="col-10">
+        <h1>My Expenses</h1>
+    </div>
+    <div class="col-2">
+        <a asp-action="Create" class="btn btn-primary">Create New</a>
+    </div>
+</div>
+
+<p>
+    
+</p>
+<table class="table table-bordered">
+    <thead>
+        <tr class="bg-warning text-dark">
+            <th>
+                @Html.DisplayNameFor(model => model.ExpenseName)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ExpenseAmt)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SpentDate)
+            </th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.ExpenseName)
+            </td>
+           
+            <td>
+                @Html.DisplayFor(modelItem => item.ExpenseAmt)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SpentDate)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
