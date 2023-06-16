@@ -10,5 +10,6 @@ namespace Budget_App.Data
 
         }
         public DbSet<Expense> Expenses { get; set; }
+        public DbSet<MesthiriAmt> MesthiriAmts { get; set; }
     }
 }
