@@ -16,7 +16,7 @@
         {
             var count = 1;
             <tr>
-                <td>@item.Date.ToShortDateString()</td>
+                <td>@item.Date.ToLocalTime().ToString().Substring(0,10)</td>
                 <td>
                     @foreach(var it1 in @item.Spends){
 

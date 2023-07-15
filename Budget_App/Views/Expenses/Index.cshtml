@@ -42,7 +42,8 @@
                 @Html.DisplayFor(modelItem => item.ExpenseAmt)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.SpentDate)
+                @*@Html.DisplayFor(modelItem => (item.SpentDate))*@
+                @item.SpentDate.ToLocalTime().ToString().Substring(0,10)
             </td>
             <td>
                 <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |

@@ -1,12 +1,23 @@
 using Budget_App.Data;
+using Budget_App.Models;
 using Budget_App.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+builder.Services.Configure<ExpenseDatabaseSettings>(
+    builder.Configuration.GetSection("ExpenseTypeDatabase")
+    );
+
+builder.Services.Configure<MesthiriAmtDatabaseSettings>(
+    builder.Configuration.GetSection("MesthiriAmtDatabase")
+    );
+
 builder.Services.AddDbContext<ApplicationDBContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );

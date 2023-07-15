@@ -1,25 +1,28 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson;
+using System.ComponentModel.DataAnnotations;
 
 namespace Budget_App.Models
 {
     public class MesthiriAmt
     {
-        [Key]
-        public int Id { get; set; }
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)] 
+        public string? Id { get; set; }
 
         [Required]
-        [Display(Name = "Expense Title")]
+        [BsonElement("Expense Title")]
         public string Title { get; set; }
 
         [Required]
-        [Display(Name = "Expense Description")]
+        [BsonElement("Expense Description")]
         public string Description { get; set; }
 
         [Required]
-        [Display(Name = "Expense Ammount")]
+        [BsonElement("Expense Amt")]
         public double ExpenseAmt { get; set; }
 
-        [Display(Name = "Spent Date")]
+        [BsonElement("Spent Date")]
         [DataType(DataType.Date)]
         public DateTime SpentDate { get; set; } = DateTime.Now;
     }

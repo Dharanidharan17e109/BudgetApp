@@ -7,34 +7,43 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Budget_App.Data;
 using Budget_App.Models;
+using MongoDB.Driver;
+using Microsoft.Extensions.Options;
 
 namespace Budget_App.Controllers
 {
     public class ExpensesController : Controller
     {
-        private readonly ApplicationDBContext _context;
+        private readonly IMongoCollection<Expense> _expenseCollection;
+        //private readonly ApplicationDBContext _context;
 
-        public ExpensesController(ApplicationDBContext context)
+        public ExpensesController(IOptions<ExpenseDatabaseSettings> expenseDatabaseSettings)
         {
-            _context = context;
+            var mongoClient = new MongoClient(
+            expenseDatabaseSettings.Value.ConnectionString);
+
+            var mongoDatabase = mongoClient.GetDatabase(
+                expenseDatabaseSettings.Value.DatabaseName);
+
+            _expenseCollection = mongoDatabase.GetCollection<Expense>(
+                expenseDatabaseSettings.Value.ExpenseCollectionName);
         }
 
         // GET: Expenses
         public async Task<IActionResult> Index()
         {
-              return View(await _context.Expenses.ToListAsync());
+              return View(await _expenseCollection.Find(_=>true).ToListAsync());
         }
 
         // GET: Expenses/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(string? id)
         {
-            if (id == null || _context.Expenses == null)
+            if (id == null || _expenseCollection == null)
             {
                 return NotFound();
             }
 
-            var expense = await _context.Expenses
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var expense = await _expenseCollection.Find(m => m.Id==id).FirstOrDefaultAsync();
             if (expense == null)
             {
                 return NotFound();
@@ -58,22 +67,23 @@ namespace Budget_App.Controllers
         {
             if (ModelState.IsValid)
             {
-                _context.Add(expense);
-                await _context.SaveChangesAsync();
+                await _expenseCollection.InsertOneAsync(expense);
+                
                 return RedirectToAction(nameof(Index));
             }
             return View(expense);
         }
 
         // GET: Expenses/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(string? id)
         {
-            if (id == null || _context.Expenses == null)
+            if (id == null || _expenseCollection== null)
             {
                 return NotFound();
             }
 
-            var expense = await _context.Expenses.FindAsync(id);
+            var expense = await _expenseCollection.Find(m => m.Id == id).FirstOrDefaultAsync();
+            expense.SpentDate = expense.SpentDate.ToLocalTime();
             if (expense == null)
             {
                 return NotFound();
@@ -86,7 +96,7 @@ namespace Budget_App.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,ExpenseName,ExpenseDescription,ExpenseAmt,SpentDate")] Expense expense)
+        public async Task<IActionResult> Edit(string id, [Bind("Id,ExpenseName,ExpenseDescription,ExpenseAmt,SpentDate")] Expense expense)
         {
             if (id != expense.Id)
             {
@@ -97,8 +107,7 @@ namespace Budget_App.Controllers
             {
                 try
                 {
-                    _context.Update(expense);
-                    await _context.SaveChangesAsync();
+                    await _expenseCollection.ReplaceOneAsync(m=>m.Id==id,expense);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -117,45 +126,45 @@ namespace Budget_App.Controllers
         }
 
         // GET: Expenses/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(string? id)
         {
-            if (id == null || _context.Expenses == null)
+            if (id == null || _expenseCollection == null)
             {
                 return NotFound();
             }
 
-            var expense = await _context.Expenses
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var expense = await _expenseCollection.DeleteOneAsync(m => m.Id == id);
+  
             if (expense == null)
             {
                 return NotFound();
             }
 
-            return View(expense);
+            return RedirectToAction("Index");
         }
 
         // POST: Expenses/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(string id)
         {
-            if (_context.Expenses == null)
+            if (_expenseCollection == null)
             {
                 return Problem("Entity set 'ApplicationDBContext.Expenses'  is null.");
             }
-            var expense = await _context.Expenses.FindAsync(id);
+            var expense =  await _expenseCollection.Find(m => m.Id == id).FirstOrDefaultAsync();
             if (expense != null)
             {
-                _context.Expenses.Remove(expense);
+                await _expenseCollection.DeleteOneAsync(m => m.Id == id);
             }
             
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool ExpenseExists(int id)
+        private bool ExpenseExists(string id)
         {
-          return _context.Expenses.Any(e => e.Id == id);
+          var expense=_expenseCollection.Find(e => e.Id == id);
+            return expense.CountDocuments() >= 1 ? true : false;
         }
     }
 }

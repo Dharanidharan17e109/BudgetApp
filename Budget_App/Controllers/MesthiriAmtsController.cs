@@ -7,40 +7,50 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Budget_App.Data;
 using Budget_App.Models;
+using MongoDB.Driver;
+using Microsoft.Extensions.Options;
 
 namespace Budget_App.Controllers
 {
     public class MesthiriAmtsController : Controller
     {
-        private readonly ApplicationDBContext _context;
+        private readonly IMongoCollection<MesthiriAmt> _mesthiriAmtCollection;
 
-        public MesthiriAmtsController(ApplicationDBContext context)
+        public MesthiriAmtsController(IOptions<MesthiriAmtDatabaseSettings> mesthiriAmtDatabaseSettings)
         {
-            _context = context;
+            var mongoClient = new MongoClient(
+            mesthiriAmtDatabaseSettings.Value.ConnectionString);
+
+            var mongoDatabase = mongoClient.GetDatabase(
+                mesthiriAmtDatabaseSettings.Value.DatabaseName);
+
+            _mesthiriAmtCollection = mongoDatabase.GetCollection<MesthiriAmt>(
+                mesthiriAmtDatabaseSettings.Value.MesthiriAmtCollectionName);
         }
 
         // GET: MesthiriAmts
         public async Task<IActionResult> Index()
         {
-              return View(await _context.MesthiriAmts.ToListAsync());
+            return View(await _mesthiriAmtCollection.Find(_ => true).ToListAsync());
         }
 
         // GET: MesthiriAmts/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(string? id)
         {
-            if (id == null || _context.MesthiriAmts == null)
+            if (id == null || _mesthiriAmtCollection == null)
             {
                 return NotFound();
             }
 
-            var mesthiriAmt = await _context.MesthiriAmts
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var mesthiriAmt = await _mesthiriAmtCollection.Find(m => m.Id == id).FirstOrDefaultAsync();
+            mesthiriAmt.SpentDate=mesthiriAmt.SpentDate.ToLocalTime();  
             if (mesthiriAmt == null)
             {
                 return NotFound();
             }
 
             return View(mesthiriAmt);
+           
         }
 
         // GET: MesthiriAmts/Create
@@ -58,27 +68,29 @@ namespace Budget_App.Controllers
         {
             if (ModelState.IsValid)
             {
-                _context.Add(mesthiriAmt);
-                await _context.SaveChangesAsync();
+                await _mesthiriAmtCollection.InsertOneAsync(mesthiriAmt);
+
                 return RedirectToAction(nameof(Index));
             }
             return View(mesthiriAmt);
         }
 
         // GET: MesthiriAmts/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(string? id)
         {
-            if (id == null || _context.MesthiriAmts == null)
+            if (id == null || _mesthiriAmtCollection == null)
             {
                 return NotFound();
             }
 
-            var mesthiriAmt = await _context.MesthiriAmts.FindAsync(id);
+            var mesthiriAmt = await _mesthiriAmtCollection.Find(m => m.Id == id).FirstOrDefaultAsync();
+            mesthiriAmt.SpentDate = mesthiriAmt.SpentDate.ToLocalTime();
             if (mesthiriAmt == null)
             {
                 return NotFound();
             }
             return View(mesthiriAmt);
+           
         }
 
         // POST: MesthiriAmts/Edit/5
@@ -86,7 +98,7 @@ namespace Budget_App.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,ExpenseAmt,SpentDate")] MesthiriAmt mesthiriAmt)
+        public async Task<IActionResult> Edit(string id, [Bind("Id,Title,Description,ExpenseAmt,SpentDate")] MesthiriAmt mesthiriAmt)
         {
             if (id != mesthiriAmt.Id)
             {
@@ -97,8 +109,7 @@ namespace Budget_App.Controllers
             {
                 try
                 {
-                    _context.Update(mesthiriAmt);
-                    await _context.SaveChangesAsync();
+                    await _mesthiriAmtCollection.ReplaceOneAsync(m => m.Id == id, mesthiriAmt);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -117,45 +128,46 @@ namespace Budget_App.Controllers
         }
 
         // GET: MesthiriAmts/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(string? id)
         {
-            if (id == null || _context.MesthiriAmts == null)
+            if (id == null || _mesthiriAmtCollection == null)
             {
                 return NotFound();
             }
 
-            var mesthiriAmt = await _context.MesthiriAmts
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (mesthiriAmt == null)
+            var expense = await _mesthiriAmtCollection.DeleteOneAsync(m => m.Id == id);
+
+            if (expense == null)
             {
                 return NotFound();
             }
 
-            return View(mesthiriAmt);
+            return RedirectToAction("Index");
         }
 
         // POST: MesthiriAmts/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(string id)
         {
-            if (_context.MesthiriAmts == null)
+
+            if (_mesthiriAmtCollection == null)
             {
-                return Problem("Entity set 'ApplicationDBContext.MesthiriAmts'  is null.");
+                return Problem("Entity set 'ApplicationDBContext.Expenses'  is null.");
             }
-            var mesthiriAmt = await _context.MesthiriAmts.FindAsync(id);
-            if (mesthiriAmt != null)
+            var expense = await _mesthiriAmtCollection.Find(m => m.Id == id).FirstOrDefaultAsync();
+            if (expense != null)
             {
-                _context.MesthiriAmts.Remove(mesthiriAmt);
+                await _mesthiriAmtCollection.DeleteOneAsync(m => m.Id == id);
             }
-            
-            await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
-        private bool MesthiriAmtExists(int id)
+        private bool MesthiriAmtExists(string id)
         {
-          return _context.MesthiriAmts.Any(e => e.Id == id);
-        }
+            var mesthiriAmt = _mesthiriAmtCollection.Find(e => e.Id == id);
+            return mesthiriAmt.CountDocuments() >= 1 ? true : false;
+            }
     }
 }

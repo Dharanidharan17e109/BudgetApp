@@ -1,6 +1,8 @@
 ﻿using Budget_App.Data;
 using Budget_App.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using MongoDB.Driver;
 using System.Diagnostics;
 
 namespace Budget_App.Controllers
@@ -8,12 +10,19 @@ namespace Budget_App.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
-        private readonly ApplicationDBContext _context;
+        private readonly IMongoCollection<Expense> _expenseCollection;
 
-        public HomeController(ILogger<HomeController> logger,ApplicationDBContext context)
+        public HomeController(ILogger<HomeController> logger, IOptions<ExpenseDatabaseSettings> expenseDatabaseSettings)
         {
             _logger = logger;
-            _context = context;
+            var mongoClient = new MongoClient(
+             expenseDatabaseSettings.Value.ConnectionString);
+
+            var mongoDatabase = mongoClient.GetDatabase(
+                expenseDatabaseSettings.Value.DatabaseName);
+
+            _expenseCollection = mongoDatabase.GetCollection<Expense>(
+                expenseDatabaseSettings.Value.ExpenseCollectionName);
         }
 
         public IActionResult Index()
@@ -23,18 +32,25 @@ namespace Budget_App.Controllers
 
         public IActionResult Privacy()
         {
-            var splitList = _context.Expenses.GroupBy(c => c.SpentDate)
-                .Select(x => new
-                {
-                    Date=x.Key,
-                    Spends = x.Select(y => new
-                    {
-                        ExpenseName=y.ExpenseName,
-                        ExpenseDescription=y.ExpenseDescription,
-                        ExpenseAmmount=y.ExpenseAmt
-                    })
-                })
-                .ToList();
+
+            var splitList = _expenseCollection.Aggregate()
+                                                .Group(m=>m.SpentDate,
+                                                n => new
+                                                {
+                                                    Date=n.Key,
+                                                    Spends=n.Select(
+                                                        o => new
+                                                        {
+                                                            ExpenseName = o.ExpenseName,
+                                                            ExpenseDescription = o.ExpenseDescription,
+                                                            ExpenseAmmount = o.ExpenseAmt
+                                                        }
+                                                        )
+                                                }).ToList();
+
+
+
+
             return View(splitList);
         }
 
