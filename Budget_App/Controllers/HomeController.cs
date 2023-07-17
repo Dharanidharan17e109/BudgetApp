@@ -46,7 +46,7 @@ namespace Budget_App.Controllers
                                                             ExpenseAmmount = o.ExpenseAmt
                                                         }
                                                         )
-                                                }).ToList();
+                                                }).ToList().OrderBy(a=>a.Date);
 
 
 
